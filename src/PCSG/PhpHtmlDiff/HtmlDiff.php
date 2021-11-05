@@ -1,16 +1,17 @@
 <?php
 
+namespace PCSG\PhpHtmlDiff;
+
 class HtmlDiff
 {
-
     private $content;
     private $oldText;
     private $newText;
-    private $oldWords = array();
-    private $newWords = array();
+    private $oldWords = [];
+    private $newWords = [];
     private $wordIndices;
     private $encoding;
-    private $specialCaseOpeningTags = array(
+    private $specialCaseOpeningTags = [
         "/<strong[^>]*/i",
         "/<b[^>]*/i",
         "/<i[^>]*/i",
@@ -22,8 +23,8 @@ class HtmlDiff
         "/<strike[^>]*/i",
         "/<s[^>]*/i",
         '/<p[^>]*/i'
-    );
-    private $specialCaseClosingTags = array(
+    ];
+    private $specialCaseClosingTags = [
         "</strong>",
         "</b>",
         "</i>",
@@ -35,7 +36,7 @@ class HtmlDiff
         "</strike>",
         "</s>",
         '</p>'
-    );
+    ];
 
     public function __construct($oldText, $newText, $encoding = 'UTF-8')
     {
@@ -78,7 +79,7 @@ class HtmlDiff
     private function purifyHtml($html, $tags = null)
     {
         if (class_exists('Tidy') && false) {
-            $config = array('output-xhtml' => true, 'indent' => false);
+            $config = ['output-xhtml' => true, 'indent' => false];
             $tidy   = new tidy;
             $tidy->parseString($html, $config, 'utf8');
             $html = ( string )$tidy;
@@ -103,7 +104,7 @@ class HtmlDiff
 
     private function IndexNewWords()
     {
-        $this->wordIndices = array();
+        $this->wordIndices = [];
         foreach ($this->newWords as $i => $word) {
             if ($this->IsTag($word)) {
                 $word = $this->StripTagAttributes($word);
@@ -111,7 +112,7 @@ class HtmlDiff
             if (isset($this->wordIndices[$word])) {
                 $this->wordIndices[$word][] = $i;
             } else {
-                $this->wordIndices[$word] = array($i);
+                $this->wordIndices[$word] = [$i];
             }
         }
     }
@@ -126,7 +127,7 @@ class HtmlDiff
     {
         $mode         = 'character';
         $current_word = '';
-        $words        = array();
+        $words        = [];
         foreach ($characterString as $character) {
             switch ($mode) {
                 case 'character':
@@ -252,7 +253,7 @@ class HtmlDiff
 
     private function ProcessInsertOperation($operation, $cssClass)
     {
-        $text = array();
+        $text = [];
         foreach ($this->newWords as $pos => $s) {
             if ($pos >= $operation->StartInNew && $pos < $operation->EndInNew) {
                 $text[] = $s;
@@ -263,7 +264,7 @@ class HtmlDiff
 
     private function ProcessDeleteOperation($operation, $cssClass)
     {
-        $text = array();
+        $text = [];
         foreach ($this->oldWords as $pos => $s) {
             if ($pos >= $operation->StartInOld && $pos < $operation->EndInOld) {
                 $text[] = $s;
@@ -274,7 +275,7 @@ class HtmlDiff
 
     private function ProcessEqualOperation($operation)
     {
-        $result = array();
+        $result = [];
         foreach ($this->newWords as $pos => $s) {
             if ($pos >= $operation->StartInNew && $pos < $operation->EndInNew) {
                 $result[] = $s;
@@ -361,7 +362,7 @@ class HtmlDiff
             }
         }
         if ($indexOfFirstTag !== null) {
-            $items = array();
+            $items = [];
             foreach ($words as $pos => $s) {
                 if ($pos >= 0 && $pos < $indexOfFirstTag) {
                     $items[] = $s;
@@ -373,7 +374,7 @@ class HtmlDiff
 
             return $items;
         } else {
-            $items = array();
+            $items = [];
             foreach ($words as $pos => $s) {
                 if ($pos >= 0 && $pos <= count($words)) {
                     $items[] = $s;
@@ -404,9 +405,9 @@ class HtmlDiff
     {
         $positionInOld = 0;
         $positionInNew = 0;
-        $operations    = array();
+        $operations    = [];
         $matches       = $this->MatchingBlocks();
-        $matches[]     = new Match(count($this->oldWords), count($this->newWords), 0);
+        $matches[]     = new MatchData(count($this->oldWords), count($this->newWords), 0);
         foreach ($matches as $i => $match) {
             $matchStartsAtCurrentPositionInOld = ($positionInOld == $match->StartInOld);
             $matchStartsAtCurrentPositionInNew = ($positionInNew == $match->StartInNew);
@@ -442,7 +443,7 @@ class HtmlDiff
 
     private function MatchingBlocks()
     {
-        $matchingBlocks = array();
+        $matchingBlocks = [];
         $this->FindMatchingBlocks(0, count($this->oldWords), 0, count($this->newWords), $matchingBlocks);
 
         return $matchingBlocks;
@@ -476,9 +477,9 @@ class HtmlDiff
         $bestMatchInOld = $startInOld;
         $bestMatchInNew = $startInNew;
         $bestMatchSize  = 0;
-        $matchLengthAt  = array();
+        $matchLengthAt  = [];
         for ($indexInOld = $startInOld; $indexInOld < $endInOld; $indexInOld++) {
-            $newMatchLengthAt = array();
+            $newMatchLengthAt = [];
             $index            = $this->oldWords[$indexInOld];
             if ($this->IsTag($index)) {
                 $index = $this->StripTagAttributes($index);
@@ -505,55 +506,6 @@ class HtmlDiff
             $matchLengthAt = $newMatchLengthAt;
         }
 
-        return $bestMatchSize != 0 ? new Match($bestMatchInOld, $bestMatchInNew, $bestMatchSize) : null;
-    }
-}
-
-class Match implements \Countable
-{
-
-    public $StartInOld;
-    public $StartInNew;
-    public $Size;
-
-    public function __construct($startInOld, $startInNew, $size)
-    {
-        $this->StartInOld = $startInOld;
-        $this->StartInNew = $startInNew;
-        $this->Size       = $size;
-    }
-
-    public function EndInOld()
-    {
-        return $this->StartInOld + $this->Size;
-    }
-
-    public function EndInNew()
-    {
-        return $this->StartInNew + $this->Size;
-    }
-
-    public function count()
-    {
-        return (int)$this->Size;
-    }
-}
-
-class Operation
-{
-
-    public $Action;
-    public $StartInOld;
-    public $EndInOld;
-    public $StartInNew;
-    public $EndInNew;
-
-    public function __construct($action, $startInOld, $endInOld, $startInNew, $endInNew)
-    {
-        $this->Action     = $action;
-        $this->StartInOld = $startInOld;
-        $this->EndInOld   = $endInOld;
-        $this->StartInNew = $startInNew;
-        $this->EndInNew   = $endInNew;
+        return $bestMatchSize != 0 ? new MatchData($bestMatchInOld, $bestMatchInNew, $bestMatchSize) : null;
     }
 }
