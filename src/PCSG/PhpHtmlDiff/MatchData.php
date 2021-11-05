@@ -15,12 +15,12 @@ class MatchData implements \Countable
         $this->Size       = $size;
     }
 
-    public function EndInOld()
+    public function endInOld()
     {
         return $this->StartInOld + $this->Size;
     }
 
-    public function EndInNew()
+    public function endInNew()
     {
         return $this->StartInNew + $this->Size;
     }
